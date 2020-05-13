@@ -194,19 +194,17 @@ def process_qPCR(contents,filename):
 	global parser
 	#return contents
 	try:
-		content_type, content_string = contents.split(';') #why 第一次拆不出来
+		_, content_string = contents.split(';') #why 第一次拆不出来
 		#print(content_string[:100])
 		content_string=content_string.split(',')[1]
-		#print(content_string[:100])
-		#content_string = contents.split(';')
-		#return content_string
-
 		decoded = base64.b64decode(content_string)
-		#ndf= pd.read_csv(io.StringIO(decoded.decode('utf-8')))
 
-
-
-		ndf=qPCR_parser([io.StringIO(decoded.decode('utf-8')),],[filename,],db=parser.db)
+		ndf=qPCR_parser([io.StringIO(decoded.decode('utf-8')),],
+			[filename,],
+			db=parser.db,
+			qPCR_Result=parser.qPCR_Result,
+			paibandan=parser.paibandan, 
+			paibandan_RQ=parser.paibandan_RQ)
 		csv_string = ndf.to_csv(index=False, encoding='utf-8')
 		csv_string = "data:text/csv;charset=gb2312,\ufeff" + urllib.parse.quote(csv_string)
 		basename=filename[0].split('.')[0]
