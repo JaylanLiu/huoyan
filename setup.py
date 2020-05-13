@@ -15,7 +15,7 @@ setup(
     url='https://github.com/JaylanLiu/HuoYan_monitoring',
 
     packages = find_packages(),
-    install_requires=['pandas','numpy','dash','dash-auth',],
+    install_requires=['pandas','numpy','dash','dash-auth','apscheduler'],
 
     classifiers=[
         'Development Status :: 3 - Alpha',

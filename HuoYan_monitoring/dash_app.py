@@ -18,6 +18,9 @@ import logging
 import time 
 import yaml
 import datetime
+import threading
+from apscheduler.schedulers.blocking import BlockingScheduler
+
 from pathlib import Path
 import importlib
 
@@ -35,6 +38,7 @@ if __name__ == "__main__" and __package__ is None:
 from .HuoYan_monitoring import HuoYan_monitoring
 
 # v0.1,不提供自动刷新，需要手工刷新以保证显示最新结果
+# v0.2, providing auto refresh using threading and apscheduler
 
 # argparse
 parser = argparse.ArgumentParser(description='HuoYan laboratory COVID-19 samples testing lifetime monitoring')
@@ -61,12 +65,12 @@ if not os.path.exists(parser.auth):
 	raise ValueError('无效的auth文件',parser.config)
 
 with open(parser.config, 'r', encoding='utf-8') as f:
-    config = yaml.load(f.read())
+    config = yaml.load(f.read(),Loader=yaml.FullLoader)
 
 today=str(datetime.datetime.now()).split(' ')[0]
 
 with open(parser.auth, 'r', encoding='utf-8') as f:
-    auth_info = yaml.load(f.read())
+    auth_info = yaml.load(f.read(),Loader=yaml.FullLoader)
     auth_info = [[x,auth_info[x]] for x in auth_info.keys()]
 
 #app
@@ -78,6 +82,32 @@ auth = dash_auth.BasicAuth(
 	app,
 	auth_info
 )
+
+
+# crontab tasks
+hy = HuoYan_monitoring(configfile=parser.config)
+hy.collect_infos()
+df=pd.read_sql('select * from test_lifetime',con=hy.con)
+
+a=0
+def refresh_database():	
+	def refresh():
+		global a
+		print(a)
+		a=a+1
+
+		hy = HuoYan_monitoring(configfile=parser.config)
+		hy.collect_infos()
+
+		global df
+		df=pd.read_sql('select * from test_lifetime',con=hy.con)
+
+	scheduler = BlockingScheduler()
+	scheduler.add_job(refresh, 'interval', seconds=1800, id='refresh_database')
+	scheduler.start()
+
+
+
 
 # layout
 app.layout = html.Div(children=[
@@ -106,48 +136,30 @@ app.layout = html.Div(children=[
 		),
 		dash_table.DataTable(
 			id='table',
+			columns=[{"name": i, "id": i} for i in df.columns]
 		),
 	]),
 	html.Footer('CopyrightⒸ BGI 2020 版权所有 深圳华大基因股份有限公司 all rights reserved. '),
 	
 ])
 
-# 用于刷新数据
+# statistics
 @app.callback(
 	dash.dependencies.Output('statistics','children'),
 	[dash.dependencies.Input('submit-button', 'n_clicks')]
 )
 def get_statistics(n_clicks):
-	hy = HuoYan_monitoring(configfile=parser.config)
-	try:
-		hy.collect_infos()
-		statistics = ''
-	except Exception as e:
-		statistics = e
-		print(e)
-	df=pd.read_sql('select * from test_lifetime',con=hy.con)
-
 	today_test_df=df[df['test'].str.contains(today).fillna(False)] # 今天到样
 	today_report_df=df[df['report'].str.contains(today).fillna(False)] # 今天报告
 
-	statistics += f'''
+	statistics = f'''
 	当日到样：{len(today_test_df)}\t当日已发报告：{len(today_report_df)}\n\n
+
+
 	累计到样：{len(df)}\t累计发送报告：{len(df[df['report'].notnull()])}\t累计异常结束：{len(df[df['finished'].notnull() & df['exception'].notnull()])}\t检测中：\t{len(df[df['finished'].isnull()])}\n
 
 	'''
 	return statistics
-
-
-# table columns
-@app.callback(
-	dash.dependencies.Output('table','columns'),
-	[dash.dependencies.Input('submit-button', 'n_clicks')]
-)
-def get_table_columns(n_clicks):
-	hy = HuoYan_monitoring(configfile=parser.config)
-	df=pd.read_sql('select * from test_lifetime',con=hy.con)
-
-	return [{"name": i, "id": i} for i in df.columns]
 
 # table data
 @app.callback(
@@ -157,24 +169,22 @@ def get_table_columns(n_clicks):
 	dash.dependencies.Input('statistics','children')]
 )
 def get_table_data(n_clicks,cate_value,state):
-	hy = HuoYan_monitoring(configfile=parser.config)
-	df=pd.read_sql('select * from test_lifetime',con=hy.con)
-	
+	global df
 	if cate_value == 'no_info':
-		df=df[df.test.notnull() & df['sample'].isnull() & df.finished.isnull()]
+		ndf=df[df.test.notnull() & df['sample'].isnull() & df.finished.isnull()]
 	elif cate_value == 'no_sample':
-		df=df[df.finished.isnull() & df['sample'].notnull() & df['test'].isnull() & df['exception'].isnull()]
+		ndf=df[df.finished.isnull() & df['sample'].notnull() & df['test'].isnull() & df['exception'].isnull()]
 	elif cate_value == 'no_report':
-		df=df[df.finished.isnull() & df['sample'].notnull() & df.test.notnull() & df.report.isnull()]
+		ndf=df[df.finished.isnull() & df['sample'].notnull() & df.test.notnull() & df.report.isnull()]
 	else:
 		raise ValueError('不支持的类别',cate_value)
 
-	return df.to_dict("rows")
-
-
-
+	return ndf.to_dict("rows")
 
 if __name__ == '__main__':
-    #app.run_server(debug=True,port=8080)
+	thread_refresh = threading.Thread(target=refresh_database)
+	thread_refresh.start()
+
+	#app.run_server(debug=True,port=8080)
 	# for production environment, debug must be False
 	app.run_server(debug=False,port=8080)

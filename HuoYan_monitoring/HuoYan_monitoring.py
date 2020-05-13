@@ -35,7 +35,7 @@ class HuoYan_monitoring(object):
             raise ValueError('无效的config文件',configfile)
 
         with open(configfile, 'r', encoding='utf-8') as f:
-            self.config =yaml.load(f.read())
+            self.config =yaml.load(f.read(),Loader=yaml.FullLoader)
 
     def creat_table(self):
         '''
