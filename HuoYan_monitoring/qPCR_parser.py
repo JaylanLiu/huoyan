@@ -9,14 +9,14 @@ import sqlite3
 #It should be implemented based on  decision tree stratege further for maintainability
 
 def qPCR_parser(xjsj_fs:list,
-                    jgfk_f:str,
+                    xjsj_ns:list,
                     qPCR_Result:str=r'\\192.168.1.2\d\QPCR Result',
                     paibandan:str=r'\\192.168.1.2\d\2-取样组\排版单',
                     paibandan_RQ:str=r'\\192.168.1.2\d\QPCR&报告组\重Q排版单',
                     db:str=r'C:\Users\HuoYan-luruzu\OneDrive\python_code\HaerbinHuoYan\HuoYan_monitoring\HuoYan_monitoring\HuoYan_records.db'
                 ):
     tdfs=[]
-    for xjsj_f in xjsj_fs:        
+    for xjsj_f,xjsj_n in zip(xjsj_ns,xjsj_fs):        
         ## 下机文件的时间从共享位置获取同名db的文件
         def find_qPCR(xjsj_f:str):
             dts=[]
@@ -63,7 +63,7 @@ def qPCR_parser(xjsj_fs:list,
 
         ## 读取下机数据并处理
 
-        xdf=pd.read_excel(xjsj_f,index_col=False)
+        xdf=pd.read_csv(xjsj_n,index_col=False)
 
         xdf=xdf[['日期', 'ID', '孔位', '样品名称', '标记物', '样品类型', 'Ct', 'Quantity', '测试结果','定量(Ct)', '定量(Copy)', '测试类型', '单位']]
 
@@ -294,11 +294,4 @@ def qPCR_parser(xjsj_fs:list,
     # 合并
     tdft=pd.concat(tdfs)
 
-    exc_jgfk=pd.ExcelWriter(jgfk_f)
-
-    tdft[tdft.送检单位.notnull()].to_excel(exc_jgfk,sheet_name='阴性',index=None)
-
-    tdft[tdft.送检单位.isnull()].to_excel(exc_jgfk,sheet_name='未录入',index=None)
-
-    exc_jgfk.close()
     return tdft

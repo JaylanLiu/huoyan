@@ -4,10 +4,12 @@ import pandas as pd
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_auth
+import base64
 
 import os
 import sys
 import re
+import io
 import argparse
 import numpy as np
 import pandas as pd
@@ -37,6 +39,7 @@ if __name__ == "__main__" and __package__ is None:
     importlib.import_module(__package__)
 
 from .HuoYan_monitoring import HuoYan_monitoring
+from .qPCR_parser import qPCR_parser
 
 # v0.1,不提供自动刷新，需要手工刷新以保证显示最新结果
 # v0.2, providing auto refresh using threading and apscheduler
@@ -123,29 +126,103 @@ app.layout = html.Div(children=[
 		# here is the preparation location for statistics figures
 	]), 
 
-	html.Div([# 在检样本详情
-		html.H2('在检样本详情'),
-		dcc.RadioItems(
-			id='category',
-			options=[
-				{'label': '有样无单', 'value': 'no_info'},
-				{'label': '有单无样', 'value': 'no_sample'},
-				{'label': '未发报告', 'value': 'no_report'}
-			],
-			value='no_report',
-			labelStyle={'display': 'inline-block'}
-		),
-		dash_table.DataTable(
-			id='table',
-			columns=[{"name": i, "id": i} for i in df.columns]
-		),
-		html.Div(id='download_sample',
-			style={'display': 'inline-block', 'margin-right': '60px'},
-		),
+	dcc.Tabs(id='tabs', children=[
+		dcc.Tab(label='Samples in test', children=[
+			html.Div(children=[
+				html.Div([# 在检样本详情					
+					dcc.RadioItems(
+						id='category',
+						options=[
+							{'label': '有样无单', 'value': 'no_info'},
+							{'label': '有单无样', 'value': 'no_sample'},
+							{'label': '未发报告', 'value': 'no_report'}
+						],
+						value='no_report',
+						labelStyle={'display': 'inline-block'}
+					),
+					dash_table.DataTable(
+						id='table',
+						columns=[{"name": i, "id": i} for i in df.columns]
+					),
+					html.Div(id='download_sample',
+						style={'display': 'inline-block', 'margin-right': '60px'},
+					),
+				]),
+			]),
+		]),
+		dcc.Tab(label='Utilities', children=[
+			html.Div(children=[
+				html.Div(children=[ # utility
+					html.H3('qPCR parser'),
+					dcc.Upload(id='upload_qPCR',children=[
+						html.Div(children=[
+							'Drag and Drop or ', html.A('Select Files'),
+						],
+						style={
+							'width': '100%',
+							'height': '60px',
+							'lineHeight': '60px',
+							'borderWidth': '1px',
+							'borderStyle': 'dashed',
+							'borderRadius': '5px',
+							'textAlign': 'center',
+							'margin': '10px'},	
+						),
+					]),
+					html.Div(id='download_qPCR',style={'display': 'inline-block', 'margin-right': '60px'},),# download
+					html.Hr(),
+				]),
+				html.Div(),# utility
+			]),
+		]),
+
 	]),
+
+	
 	html.Footer('CopyrightⒸ BGI 2020 版权所有 深圳华大基因股份有限公司 all rights reserved. '),
 	
 ])
+
+
+# upload qPCR and withdraw the paser result
+@app.callback(
+	dash.dependencies.Output('download_qPCR','children'),
+	[dash.dependencies.Input('upload_qPCR','contents'),
+	dash.dependencies.Input('upload_qPCR','filename')]
+)
+def process_qPCR(contents,filename):
+	global parser
+	#return contents
+	try:
+		content_type, content_string = contents.split(';') #why 第一次拆不出来
+		#print(content_string[:100])
+		content_string=content_string.split(',')[1]
+		#print(content_string[:100])
+		#content_string = contents.split(';')
+		#return content_string
+
+		decoded = base64.b64decode(content_string)
+		#ndf= pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+
+
+
+		ndf=qPCR_parser([io.StringIO(decoded.decode('utf-8')),],[filename,],db=parser.db)
+		csv_string = ndf.to_csv(index=False, encoding='utf-8')
+		csv_string = "data:text/csv;charset=gb2312,\ufeff" + urllib.parse.quote(csv_string)
+		basename=filename[0].split('.')[0]
+		filename = f'{basename}_parsed.csv'  
+
+		return html.A(
+					'Download',
+					id='download_parsed_qPCR_link',
+					download=filename,
+					href=csv_string,				
+					target="_blank",
+				)
+	except Exception as e:
+		return str(e)
+		
+	
 
 # download_sample_link
 @app.callback(
@@ -164,7 +241,6 @@ def update_download_sample_link(cate_value):
 		raise ValueError('不支持的类别',cate_value)
 
 	csv_string = ndf.to_csv(index=False, encoding='utf-8')
-	#csv_string = "data:text/csv;charset=utf-8,\ufeff" + urllib.parse.quote(csv_string)
 	csv_string = "data:text/csv;charset=gb2312,\ufeff" + urllib.parse.quote(csv_string)
 	filename = f'{cate_value}.csv'  
 
@@ -218,6 +294,6 @@ if __name__ == '__main__':
 	thread_refresh = threading.Thread(target=refresh_database)
 	thread_refresh.start()
 
-	app.run_server(debug=True,port=8050)
+	#app.run_server(debug=True,port=8050)
 	# for production environment, debug must be False
-	#app.run_server(debug=False,port=8080)
+	app.run_server(debug=False,port=8080)
