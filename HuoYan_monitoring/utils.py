@@ -42,13 +42,14 @@ def fetch_mail(
 
 
 def send_mail(
+    user:str,
+    passwd:str,
     mail_to:list=[],
     mail_cc:list=[],
     mail_bcc:list=[],
     mail_subject:str='',
     mail_body:str='',
-    user:str='bgi-peta@genomics.cn',
-    passwd:str = 'Peta2018_6',
+    
     host:str = 'mail.genomics.cn',
     port:int = 25
     ):

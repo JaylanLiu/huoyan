@@ -15,7 +15,8 @@ from collections import defaultdict
 import json
 import sqlite3
 import logging
-import time 
+import time
+import urllib 
 import yaml
 import datetime
 import threading
@@ -138,10 +139,42 @@ app.layout = html.Div(children=[
 			id='table',
 			columns=[{"name": i, "id": i} for i in df.columns]
 		),
+		html.Div(id='download_sample',
+			style={'display': 'inline-block', 'margin-right': '60px'},
+		),
 	]),
 	html.Footer('CopyrightⒸ BGI 2020 版权所有 深圳华大基因股份有限公司 all rights reserved. '),
 	
 ])
+
+# download_sample_link
+@app.callback(
+	dash.dependencies.Output('download_sample','children'),
+	[dash.dependencies.Input('category','value')]
+)
+def update_download_sample_link(cate_value):
+	global df
+	if cate_value == 'no_info':
+		ndf=df[df.test.notnull() & df['sample'].isnull() & df.finished.isnull()]
+	elif cate_value == 'no_sample':
+		ndf=df[df.finished.isnull() & df['sample'].notnull() & df['test'].isnull() & df['exception'].isnull()]
+	elif cate_value == 'no_report':
+		ndf=df[df.finished.isnull() & df['sample'].notnull() & df.test.notnull() & df.report.isnull()]
+	else:
+		raise ValueError('不支持的类别',cate_value)
+
+	csv_string = ndf.to_csv(index=False, encoding='utf-8')
+	#csv_string = "data:text/csv;charset=utf-8,\ufeff" + urllib.parse.quote(csv_string)
+	csv_string = "data:text/csv;charset=gb2312,\ufeff" + urllib.parse.quote(csv_string)
+	filename = f'{cate_value}.csv'  
+
+	return html.A(
+				'Download',
+				id='download_sample_link',
+				download=filename,
+				href=csv_string,				
+				target="_blank",
+			)
 
 # statistics
 @app.callback(
@@ -185,6 +218,6 @@ if __name__ == '__main__':
 	thread_refresh = threading.Thread(target=refresh_database)
 	thread_refresh.start()
 
-	#app.run_server(debug=True,port=8080)
+	app.run_server(debug=True,port=8050)
 	# for production environment, debug must be False
-	app.run_server(debug=False,port=8080)
+	#app.run_server(debug=False,port=8080)
