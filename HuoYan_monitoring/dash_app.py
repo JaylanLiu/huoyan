@@ -107,7 +107,7 @@ def refresh_database():
 		df=pd.read_sql('select * from test_lifetime',con=hy.con)
 
 	scheduler = BlockingScheduler()
-	scheduler.add_job(refresh, 'interval', seconds=1800, id='refresh_database')
+	scheduler.add_job(refresh, 'interval', seconds=600, id='refresh_database')
 	scheduler.start()
 
 
@@ -192,6 +192,7 @@ app.layout = html.Div(children=[
 )
 def process_qPCR(contents,filename):
 	global parser
+	global config
 	#return contents
 	try:
 		_, content_string = contents.split(';') #why 第一次拆不出来
@@ -202,9 +203,9 @@ def process_qPCR(contents,filename):
 		ndf=qPCR_parser([io.StringIO(decoded.decode('utf-8')),],
 			[filename,],
 			db=parser.db,
-			qPCR_Result=parser.qPCR_Result,
-			paibandan=parser.paibandan, 
-			paibandan_RQ=parser.paibandan_RQ)
+			qPCR_Result=config['qPCR_Result'],
+			paibandan=config['paibandan'], 
+			paibandan_RQ=config['paibandan_RQ'])
 		csv_string = ndf.to_csv(index=False, encoding='utf-8')
 		csv_string = "data:text/csv;charset=gb2312,\ufeff" + urllib.parse.quote(csv_string)
 		basename=filename[0].split('.')[0]
