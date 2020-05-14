@@ -68,7 +68,7 @@ class HuoYan_monitoring(object):
             sample_file:    文件名称，绝对路径
             modify_time:    最后修改时间
         '''
-        self.con.execute('create table test_lifetime(id,name,organization,sample,test,extract,board_index,hole_index,report,exception,finished)')
+        self.con.execute('create table test_lifetime(id,name,organization,unit,board_index,hole_index,sample,test,extract,report,exception,finished)')
         self.con.execute('create table processed_sample_files(sample_file,modify_time)')
         self.con.execute('create table processed_test_files(test_file,modify_time)')
         self.con.execute('create table processed_extract_files(extract_file,modify_time)')
@@ -221,12 +221,12 @@ class HuoYan_monitoring(object):
         if res == None or self.file_modify_time(file) > res[0]:#如果不存在记录或者记录的时间早于当前文件修改时间，则进行更新
             df=pd.read_excel(file,parse_dates=['样品采集日期'],mode='r')#从表格内部处理日期
 
-            for id,name,organization,date in zip(df['样品编号'],df['姓名'],df['送检单位'],df['样品采集日期']):
+            for id,name,unit,organization,date in zip(df['样品编号'],df['姓名'],df['科室'],df['送检单位'],df['样品采集日期']):
                 resn = self.con.execute(f"select * from test_lifetime where id ='{id}'").fetchone()
                 if resn == None:#所有表中均未出现过
-                    self.con.execute(f"insert into test_lifetime(id,name,organization,sample) values ('{id}','{name}','{organization}','{date}')") 
+                    self.con.execute(f"insert into test_lifetime(id,unit,name,organization,sample) values ('{id}','{unit}','{name}','{organization}','{date}')") 
                 else:#test表中先出现了该编号
-                    self.con.execute(f"update test_lifetime set name='{name}',organization='{organization}',sample='{date}' where id='{id}'")
+                    self.con.execute(f"update test_lifetime set name='{name}',unit='{unit}',organization='{organization}',sample='{date}' where id='{id}'")
 
         #这里需要检查res的当前状态，没有的话是新建，有的话需要改成更新，不优雅
         if res ==None:
