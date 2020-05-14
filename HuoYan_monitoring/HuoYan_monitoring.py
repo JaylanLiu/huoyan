@@ -156,16 +156,12 @@ class HuoYan_monitoring(object):
         '''采集信息'''
         # 送样信息
         for file in os.listdir(self.config['sample_dir']):
-            print(file,0)
             if not file.endswith('xlsx'):
                 continue
-            print(file,1)
             if file.startswith('~'):
                 continue
-            print(file,2)
 
             file=os.path.join(self.config['sample_dir'],file)
-            print(file,3)
             self.sample_info(file)
 
         # 实验信息
@@ -220,12 +216,9 @@ class HuoYan_monitoring(object):
 
     def sample_info(self,file:str):
         ''' sample 表处理'''
-        print(file,4)
         file = os.path.abspath(file)
-        print(file,5)
         res = self.con.execute(f"select modify_time from processed_sample_files where sample_file = '{file}'").fetchone()
         if res == None or self.file_modify_time(file) > res[0]:#如果不存在记录或者记录的时间早于当前文件修改时间，则进行更新
-            print(file,6)
             df=pd.read_excel(file,parse_dates=['样品采集日期'],mode='r')#从表格内部处理日期
 
             for id,name,organization,date in zip(df['样品编号'],df['姓名'],df['送检单位'],df['样品采集日期']):
@@ -282,7 +275,6 @@ class HuoYan_monitoring(object):
             date=os.path.basename(file).split('-')[0]#从文件名称中提取日期            
             board_index=os.path.basename(file).split('.')[0]#从文件名称中提取板号
             if len(date)!=8:
-                print(file)
                 raise ValueError('检测表格错误的日期格式',file)
             
             df=pd.read_excel(file, mode='r')
