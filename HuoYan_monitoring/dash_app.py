@@ -143,8 +143,13 @@ app.layout = html.Div(children=[
 					),
 					dash_table.DataTable(
 						id='table',
-						columns=[{"name": i, "id": i} for i in df.columns]
+						columns=[{"name": i, "id": i} for i in df.columns],
+						filter_action="native",
+						sort_action="native",
+						sort_mode="multi",
+						page_action="native",
 					),
+					html.Div(id='table_interactivity_container'),
 					html.Div(id='download_sample',
 						style={'display': 'inline-block', 'margin-right': '60px'},
 					),
@@ -202,6 +207,44 @@ app.layout = html.Div(children=[
 	html.Footer('CopyrightⒸ BGI 2020 版权所有 深圳华大基因股份有限公司 all rights reserved. '),
 	
 ])
+
+# table enhancement, filtering
+@app.callback(
+    dash.dependencies.Output('table_interactivity_container', "children"),
+    [dash.dependencies.Input('table', "derived_virtual_data"),
+     dash.dependencies.Input('table', "derived_virtual_selected_rows"),
+	 dash.dependencies.Input('category','value')])
+def update_graphs(rows, derived_virtual_selected_rows,cate_value):
+    if derived_virtual_selected_rows is None:
+        derived_virtual_selected_rows = []
+    dff = df if rows is None else pd.DataFrame(rows)
+    colors = ['#7FDBFF' if i in derived_virtual_selected_rows else '#0074D9'
+              for i in range(len(dff))]
+
+    return [
+        dcc.Graph(
+            id=column,
+            figure={
+                "data": [
+                    {
+                        "x": dff["country"],
+                        "y": dff[column],
+                        "type": "bar",
+                        "marker": {"color": colors},
+                    }
+                ],
+                "layout": {
+                    "xaxis": {"automargin": True},
+                    "yaxis": {
+                        "automargin": True,
+                        "title": {"text": column}
+                    },
+                },
+            },
+        )
+		for column in ["pop", "lifeExp", "gdpPercap"] if column in dff
+    ]
+
 
 
 # uplod sample info validate
@@ -339,6 +382,6 @@ if __name__ == '__main__':
 	thread_refresh = threading.Thread(target=refresh_database)
 	thread_refresh.start()
 
-	app.run_server(debug=True,port=8050)
+	#app.run_server(debug=True,port=8050)
 	# for production environment, debug must be False
-	#app.run_server(debug=False,port=8080)
+	app.run_server(debug=False,port=8080)
