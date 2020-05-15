@@ -40,6 +40,7 @@ if __name__ == "__main__" and __package__ is None:
 
 from .HuoYan_monitoring import HuoYan_monitoring
 from .qPCR_parser import qPCR_parser
+from .sample_info_validate import validate
 
 # v0.1,不提供自动刷新，需要手工刷新以保证显示最新结果
 # v0.2, providing auto refresh using threading and apscheduler
@@ -172,7 +173,26 @@ app.layout = html.Div(children=[
 					html.Div(id='download_qPCR',style={'display': 'inline-block', 'margin-right': '60px'},),# download
 					html.Hr(),
 				]),
-				html.Div(),# utility
+				html.Div(children=[
+					html.H3('信息录入审核'),
+					dcc.Upload(id='upload_info',children=[
+						html.Div(children=[
+							'Drag and Drop or ', html.A('Select Files'),
+						],
+						style={
+							'width': '100%',
+							'height': '60px',
+							'lineHeight': '60px',
+							'borderWidth': '1px',
+							'borderStyle': 'dashed',
+							'borderRadius': '5px',
+							'textAlign': 'center',
+							'margin': '10px'},	
+						),
+					]),
+					html.Div(id='validate_result'),# result
+					html.Hr(),
+				]),# utility
 			]),
 		]),
 
@@ -183,6 +203,32 @@ app.layout = html.Div(children=[
 	
 ])
 
+
+# uplod sample info validate
+@app.callback(
+	dash.dependencies.Output('validate_result','children'),
+	[dash.dependencies.Input('upload_info','contents'),
+	dash.dependencies.Input('upload_info','filename')]
+)
+def process_info(contents,filename):
+	global parser
+	global config
+	#return contents
+	try:
+		_, content_string = contents.split(';') #why 第一次拆不出来
+		#print(content_string[:100])
+		content_string=content_string.split(',')[1]
+		decoded = base64.b64decode(content_string)
+
+		#print(decoded)
+
+		ndf=pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+
+		log_stream = validate(ndf,filename)  
+
+		return "Successfully, Please update to MYBGI"
+	except Exception as e:
+		return str(e)
 
 # upload qPCR and withdraw the paser result
 @app.callback(
@@ -293,6 +339,6 @@ if __name__ == '__main__':
 	thread_refresh = threading.Thread(target=refresh_database)
 	thread_refresh.start()
 
-	#app.run_server(debug=True,port=8050)
+	app.run_server(debug=True,port=8050)
 	# for production environment, debug must be False
-	app.run_server(debug=False,port=8080)
+	#app.run_server(debug=False,port=8080)
