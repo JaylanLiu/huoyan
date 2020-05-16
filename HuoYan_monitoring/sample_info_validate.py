@@ -116,6 +116,7 @@ def validate(dfi:pd.DataFrame,
 
     dfm = pd.read_excel(tymb)
     dft=dfi.reindex(columns= dfm.columns)
+    #print(dft)
     dft.to_excel(target,index=None)
 
     logger.info('生成通用模板并上传共享')

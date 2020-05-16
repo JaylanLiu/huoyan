@@ -263,11 +263,12 @@ def process_info(contents,filename):
 		content_string=content_string.split(',')[1]
 		decoded = base64.b64decode(content_string)
 
-		#print(decoded)
+		#print(decoded.decode('utf-8')) #该处正常
 
-		ndf=pd.read_csv(io.StringIO(decoded.decode('utf-8')))
+		ndf = pd.read_csv(io.StringIO(decoded.decode('utf-8')), dtype={'证件号码':'str','电话':'str'})
+		#print(ndf) #该处也正常
 
-		log_stream = validate(ndf,filename)  
+		log_stream = validate(ndf,filename)
 
 		return "Successfully, Please update to MYBGI"
 	except Exception as e:
