@@ -165,20 +165,26 @@ class HuoYan_monitoring(object):
             self.sample_info(file)
 
         # 实验信息
-        for file in os.listdir(self.config['test_dir']):
-            if not file.startswith('20'):
-                continue
-            if '出库样本明细表' not in file:
-                continue
-            if file.startswith('~'):
-                continue
+        # update corresponding to the subfolder change
+        dir=self.config['test_dir']
+        for sub in os.listdir(dir):
+            fsub=os.path.join(dir,sub)
 
-            file=os.path.join(self.config['test_dir'],file)
-            self.test_info(file)
+            if os.path.isdir(fsub):
+                for file in os.listdir(fsub):
+                    if not file.startswith('20'):
+                        continue
+                    if '出库样本明细表' not in file:
+                        continue
+                    if file.startswith('~'):
+                        continue
+
+                    ffile=os.path.join(fsub,file)
+                    self.test_info(ffile)
 
         # 提取信息
         dir=self.config['extract_dir']
-        for sub in os.listdir(self.config['extract_dir']):
+        for sub in os.listdir(dir):
             fsub=os.path.join(dir,sub)
 
             if os.path.isdir(fsub):
