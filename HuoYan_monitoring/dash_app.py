@@ -5,6 +5,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_auth
 import base64
+import plotly.graph_objects as go
 
 import os
 import sys
@@ -72,7 +73,7 @@ if not os.path.exists(parser.auth):
 with open(parser.config, 'r', encoding='utf-8') as f:
     config = yaml.load(f.read(),Loader=yaml.FullLoader)
 
-today=str(datetime.datetime.now()).split(' ')[0]
+today=str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
 with open(parser.auth, 'r', encoding='utf-8') as f:
     auth_info = yaml.load(f.read(),Loader=yaml.FullLoader)
@@ -91,7 +92,10 @@ auth = dash_auth.BasicAuth(
 
 # crontab tasks
 hy = HuoYan_monitoring(configfile=parser.config)
-hy.collect_infos()
+try:
+	hy.collect_infos()
+except Exception as e:
+	print(e)
 df=pd.read_sql('select * from test_lifetime',con=hy.con)
 
 a=0
@@ -102,7 +106,10 @@ def refresh_database():
 		a=a+1
 
 		hy = HuoYan_monitoring(configfile=parser.config)
-		hy.collect_infos()
+		try:
+			hy.collect_infos()
+		except Exception as e:
+			print(e)
 
 		global df
 		df=pd.read_sql('select * from test_lifetime',con=hy.con)
@@ -112,6 +119,12 @@ def refresh_database():
 	scheduler.start()
 
 
+def get_day_item_num(df:pd.DataFrame,day:str,item:str,organization:str='total'):
+    if organization !='total':
+        ndf=df[(df[item].str.contains(day)).fillna(False) & (df['organization']==organization)]
+    else:
+        ndf=df[(df[item].str.contains(day)).fillna(False)]
+    return len(ndf)
 
 
 # layout
@@ -128,6 +141,38 @@ app.layout = html.Div(children=[
 	]), 
 
 	dcc.Tabs(id='tabs', children=[
+		dcc.Tab(id ='records',label='Records',children=[
+			html.Div(children=[
+				html.Div([
+					dcc.Dropdown(
+						id='organization',
+						options=[{'label': 'total', 'value': 'total'},
+								{'label': '哈尔滨市道里区教育局', 'value': '哈尔滨市道里区教育局'},
+								{'label': '道外区疾病控制中心', 'value': '道外区疾病控制中心'},
+								{'label': '哈尔滨市道外区教育局', 'value': '哈尔滨市道外区教育局'},
+								{'label': '哈尔滨市平房区中医院', 'value': '哈尔滨市平房区中医院'},
+								{'label': '黑龙江华大医学检验有限公司', 'value': '黑龙江华大医学检验有限公司'},
+								{'label': '哈尔滨市道外区疾病预防控制中心', 'value': '哈尔滨市道外区疾病预防控制中心'},
+								{'label': '道外区大有社区卫生服务中心', 'value': '道外区大有社区卫生服务中心'},
+								{'label': '道外区三棵社区卫生服务中心', 'value': '道外区三棵社区卫生服务中心'},
+								{'label': '哈尔滨广积德中医医院有限公司', 'value': '哈尔滨广积德中医医院有限公司'},
+								{'label': '哈尔滨三芝堂中医门诊部', 'value': '哈尔滨三芝堂中医门诊部'},
+								{'label': '哈尔滨航天医院', 'value': '哈尔滨航天医院'},
+								{'label': '冀东水泥黑龙江有限公司', 'value': '冀东水泥黑龙江有限公司'},
+								{'label': '黑龙江鲁班建设集团有限公司', 'value': '黑龙江鲁班建设集团有限公司'},
+								{'label': '国家税务总局哈尔滨市阿城区税务局', 'value': '国家税务总局哈尔滨市阿城区税务局'},
+								{'label': '哈尔滨市双城区教育局', 'value': '哈尔滨市双城区教育局'},
+								{'label': '五常市教育局', 'value': '五常市教育局'},
+								{'label': '哈尔滨市中医医院', 'value': '哈尔滨市中医医院'},
+								{'label': '哈尔滨市南岗区教育局', 'value': '哈尔滨市南岗区教育局'},
+								{'label': '哈尔滨市香坊区教育局', 'value': '哈尔滨市香坊区教育局'}],
+						value='total',
+					),
+					dcc.Graph(id='present'),
+					
+				]),
+			]),
+		]),
 		dcc.Tab(label='Samples in test', children=[
 			html.Div(children=[
 				html.Div([# 在检样本详情					
@@ -207,6 +252,54 @@ app.layout = html.Div(children=[
 	html.Footer('CopyrightⒸ BGI 2020 版权所有 深圳华大基因股份有限公司 all rights reserved. '),
 	
 ])
+
+
+
+# present
+@app.callback(
+	dash.dependencies.Output('present','figure'),
+	[dash.dependencies.Input('organization','value')]
+)
+def dropdown_options(org):
+	global df
+	last_10_days=pd.DatetimeIndex(end=time.strftime("%Y-%m-%d", time.localtime()),freq='d',periods=10)
+	fig = go.Figure()
+	days=[str(day)[:10] for day in last_10_days]
+
+
+	for item,tag in zip(['test','extract','report'],['到样数','检测数','报告数']):
+		fig.add_trace(go.Bar(
+		x=days,
+		y=[get_day_item_num(df,day,organization=org,item=item) for day in days ],
+		name=tag,
+    
+	))
+	fig.update_layout(barmode='group', xaxis_tickangle=-90)
+	
+	return fig
+
+
+# dropdown options for present. why options did not work
+'''
+@app.callback(
+	dash.dependencies.Output('organization','options'),
+	[dash.dependencies.Input('category','value'),
+	dash.dependencies.Input('submit-button', 'n_clicks')]
+)
+def dropdown_options(v,n):
+	global df
+	options=[]
+	options.append({'label':'total','value':'total'})
+	for org in df.organization.unique():
+		option={'label':org,'value':org}
+		options.append(option)
+
+	print(options)
+	
+	return options
+''' 
+
+
 
 # table enhancement, filtering
 @app.callback(
@@ -383,6 +476,6 @@ if __name__ == '__main__':
 	thread_refresh = threading.Thread(target=refresh_database)
 	thread_refresh.start()
 
-	#app.run_server(debug=True,port=8050)
+	app.run_server(debug=True,port=8050)
 	# for production environment, debug must be False
-	app.run_server(debug=False,port=8080)
+	#app.run_server(debug=False,port=8080)
