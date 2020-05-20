@@ -239,7 +239,7 @@ def qPCR_parser(xjsj_fs:list,
                 return np.nan,'整版重提'
             elif VIC_whole_judge == '整版重Q':
                 return np.nan,'整版重Q'
-            elif VIC_whole_judge =='人工判断':
+            elif VIC_whole_judge =='人工判读':
                 if pd.isnull(FAM_whole_judge):
                     if pd.isnull(VIC_judge):
                         if pd.isnull(FAM_judge):
