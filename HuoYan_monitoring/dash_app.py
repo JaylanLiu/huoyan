@@ -73,7 +73,7 @@ if not os.path.exists(parser.auth):
 with open(parser.config, 'r', encoding='utf-8') as f:
     config = yaml.load(f.read(),Loader=yaml.FullLoader)
 
-today=str(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+today=str(time.strftime("%Y-%m-%d", time.localtime()))
 
 with open(parser.auth, 'r', encoding='utf-8') as f:
     auth_info = yaml.load(f.read(),Loader=yaml.FullLoader)
@@ -444,10 +444,10 @@ def get_statistics(n_clicks):
 	today_report_df=df[df['report'].str.contains(today).fillna(False)] # 今天报告
 
 	statistics = f'''
-	当日到样：{len(today_test_df)}\t当日已发报告：{len(today_report_df)}\n\n
+	当日到样：{len(today_test_df)};\t当日发出报告：{len(today_report_df)};\n\n
 
 
-	累计到样：{len(df)}\t累计发送报告：{len(df[df['report'].notnull()])}\t累计异常结束：{len(df[df['finished'].notnull() & df['exception'].notnull()])}\t检测中：\t{len(df[df['finished'].isnull()])}\n
+	累计到样：{len(df[df['test'].notnull()])};\t累计发送报告：{len(df[df['report'].notnull()])};\t累计异常结束：{len(df[df['finished'].notnull() & df['exception'].notnull()])};\t检测中：\t{len(df[df['finished'].isnull() & df['test'].notnull()])}\n
 
 	'''
 	return statistics
@@ -476,6 +476,6 @@ if __name__ == '__main__':
 	thread_refresh = threading.Thread(target=refresh_database)
 	thread_refresh.start()
 
-	app.run_server(debug=True,port=8050)
+	#app.run_server(debug=True,port=8050)
 	# for production environment, debug must be False
-	#app.run_server(debug=False,port=8080)
+	app.run_server(debug=False,port=8080)
