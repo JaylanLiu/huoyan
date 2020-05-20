@@ -345,12 +345,12 @@ class HuoYan_monitoring(object):
             resn = self.con.execute(f"select * from test_lifetime where id ='{id}'").fetchone()
             if resn == None:#不存在样本，插入操作
                 if hege=='是': #合格 生命周期不结束
-                    self.con.execute(f"insert into test_lifetime (id,exception) values ('{id}','{qksm}') ")
+                    self.con.execute(f"insert into test_lifetime (id,test,exception) values ('{id}','{date}','{qksm}') ")
                 else: #不合格，结束生命周期
-                    self.con.execute(f"insert into test_lifetime (id,exception,finished) values ('{id}','{qksm}',1) ")
+                    self.con.execute(f"insert into test_lifetime (id,test,exception,finished) values ('{id}','{date}','{qksm}',1) ")
             else:#存在样本，更新操作
                 if hege=='是':
-                    self.con.execute(f"update test_lifetime set exception='{qksm}' where id='{id}'")
+                    self.con.execute(f"update test_lifetime set exception='{qksm}',test='{date}' where id='{id}'")
                 else:
                     self.con.execute(f"update test_lifetime set exception='{qksm}',test='{date}',finished=1 where id='{id}'")
 
@@ -359,3 +359,40 @@ class HuoYan_monitoring(object):
 
     def monitoring(self):
         pass
+
+    # 
+    def daily_report(self,
+                    day:str=None,
+                    jyjs:list=[ '哈尔滨市双城区教育局', '五常市教育局', '哈尔滨市南岗区教育局', '哈尔滨市香坊区教育局']):
+        df=pd.read_sql('select * from test_lifetime',con=self.con)
+        smpi=pd.read_sql('select * from sample_info',con=self.con)
+        full_df=pd.merge(df,smpi, on='id',how='left')
+
+        jyj_df=full_df[(full_df.organization.isin(jyjs))]
+        jyj_df['school']=jyj_df.unit.map(lambda x: re.split('_',x)[0])
+
+        #每天的三个子df
+        if day: #指定了日期       
+            test_df=jyj_df[(jyj_df['test'].str.contains(day).fillna(False))]
+            hege_df=jyj_df[(jyj_df['test'].str.contains(day).fillna(False)) & (jyj_df['exception'].isnull())]
+            extract_df=jyj_df[(jyj_df['extract'].str.contains(day).fillna(False))]
+            report_df=jyj_df[(jyj_df['report'].str.contains(day).fillna(False))]
+        else: #未指定日期
+            test_df=jyj_df[jyj_df['test'].notnull()]
+            hege_df=jyj_df[jyj_df['test'].notnull() & jyj_df['exception'].isnull()]
+            extract_df=jyj_df[jyj_df['extract'].notnull()]
+            report_df=jyj_df[jyj_df['report'].notnull()]
+
+        test_df.to_excel('aaaaa.xlsx')
+
+        day_df=pd.DataFrame([
+            test_df.groupby(['organization','school'])['id'].count(),
+            hege_df.groupby(['organization','school'])['id'].count(),
+            extract_df.groupby(['organization','school'])['id'].count(),
+            report_df.groupby(['organization','school'])['id'].count(),
+        ]).T
+
+        day_df.columns=pd.Index(['到样数','合格数','检测数','报告数'])
+        day_df=day_df.fillna(0)
+
+        return day_df
