@@ -184,7 +184,11 @@ class HuoYan_monitoring(object):
                 continue
 
             file = os.path.join(self.config["sample_dir"], file)
-            self.sample_info(file)
+            try:
+                self.sample_info(file)
+            except Exception as e:
+                print("sample file error", file)
+                print(e)
 
         # 实验信息
         # update corresponding to the subfolder change
@@ -202,7 +206,11 @@ class HuoYan_monitoring(object):
                         continue
 
                     ffile = os.path.join(fsub, file)
-                    self.test_info(ffile)
+                    try:
+                        self.test_info(ffile)
+                    except Exception as e:
+                        print("test file error", file)
+                        print(e)
 
         # 提取信息
         dir = self.config["extract_dir"]
@@ -217,7 +225,11 @@ class HuoYan_monitoring(object):
                         continue
 
                     ffile = os.path.join(fsub, file)
-                    self.extract_info(ffile)
+                    try:
+                        self.extract_info(ffile)
+                    except Exception as e:
+                        print("extract file error", file)
+                        print(e)
 
         # 报告信息
 
@@ -229,10 +241,18 @@ class HuoYan_monitoring(object):
                 continue
 
             file = os.path.join(report_dir, file)
-            self.report_info(file)
+            try:
+                self.report_info(file)
+            except Exception as e:
+                print("report file error", file)
+                print(e)
 
         # 异常信息
-        self.exception_info(self.config["exception_file"])
+        try:
+            self.exception_info(self.config["exception_file"])
+        except Exception as e:
+            print("exception file error", file)
+            print(e)
 
     def file_modify_time(self, file: str):
         """文件的最后修改时间"""
@@ -482,7 +502,7 @@ class HuoYan_monitoring(object):
         full_df = pd.merge(df, smpi, on="id", how="left")
 
         return full_df
-    
+
     # 已到样确认但未发报告的记录表
     def get_unreport_df(self, organizations: list = []):
         df = self.get_full_df()

@@ -122,7 +122,7 @@ def refresh_database():
         df = pd.read_sql("select * from test_lifetime", con=hy.con)
 
     scheduler = BlockingScheduler()
-    scheduler.add_job(refresh, "interval", seconds=600, id="refresh_database")
+    scheduler.add_job(refresh, "interval", seconds=1000, id="refresh_database")
     scheduler.start()
 
 
@@ -581,7 +581,7 @@ def update_download_sample_link(cate_value):
     [dash.dependencies.Input("submit-button", "n_clicks")],
 )
 def get_statistics(n_clicks):
-	today = str(time.strftime("%Y-%m-%d", time.localtime()))
+    today = str(time.strftime("%Y-%m-%d", time.localtime()))
     today_test_df = df[df["test"].str.contains(today).fillna(False)]  # 今天到样
     today_report_df = df[df["report"].str.contains(today).fillna(False)]  # 今天报告
 
