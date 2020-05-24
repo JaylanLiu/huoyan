@@ -346,29 +346,31 @@ class HuoYan_monitoring(object):
         ).fetchone()
         if res == None or self.file_modify_time(file) > res[0]:  # 表格未处理，处理表格
             df = pd.read_excel(file, sheet_name="出库样本明细", mode="r")
-            sers = []
-            for column in df.columns:
-                ser = df[column].dropna().astype(str)
-                sers.append(ser[ser.str.startswith("20S")])
 
-            total = pd.concat(sers)
+            ids = []
+            schools = []
+            for col in df.columns:
+                for id in df[col]:
+                    if str(id).startswith("20S") and len(str(id)) == 10:
+                        ids.append(id)
+                        schools.append(col)
 
             date = os.path.basename(file).split("_")[0]  # 从文件名称中提取日期
             if len(date) != 8:
                 raise ValueError("检测表格错误的日期格式", file)
 
             ndf = pd.DataFrame(
-                {"id": list(total), "date": [date for i in range(len(total))]}
+                {"id": ids, "unit": schools, "date": [date for i in range(len(ids))]}
             )
             ndf.date = pd.to_datetime(ndf.date, format="%Y%m%d")
 
-            for id, date in zip(ndf["id"], ndf["date"]):
+            for id, unit, date in zip(ndf["id"], ndf["unit"], ndf["date"]):
                 resn = self.con.execute(
                     f"select * from test_lifetime where id ='{id}'"
                 ).fetchone()
-                if resn == None:  # 所有表中均未出现过
+                if resn == None:  # 所有表中均未出现过，保留
                     self.con.execute(
-                        f"insert into test_lifetime (id,test) values ('{id}','{date}')"
+                        f"insert into test_lifetime (id,unit,test) values ('{id}','{unit}','{date}')"
                     )
                 else:  # sample表中先出现了该编号
                     self.con.execute(
@@ -502,6 +504,17 @@ class HuoYan_monitoring(object):
         full_df = pd.merge(df, smpi, on="id", how="left")
 
         return full_df
+
+    # 已到样确认的记录表
+    def get_tested_df(self, organizations: list = []):
+        df = self.get_full_df()
+        if len(organizations) == 0:
+            df = df[(df["test"].notnull())]
+        else:
+            df = df[df["organization"].isin(organizations)]
+            df = df[(df["test"].notnull())]
+
+        return df
 
     # 已到样确认但未发报告的记录表
     def get_unreport_df(self, organizations: list = []):

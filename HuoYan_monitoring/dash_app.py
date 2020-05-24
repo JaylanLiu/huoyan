@@ -97,10 +97,6 @@ auth = dash_auth.BasicAuth(app, auth_info)
 
 # crontab tasks
 hy = HuoYan_monitoring(configfile=parser.config)
-try:
-    hy.collect_infos()
-except Exception as e:
-    print(e)
 df = pd.read_sql("select * from test_lifetime", con=hy.con)
 
 a = 0
