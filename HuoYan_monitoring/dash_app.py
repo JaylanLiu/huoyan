@@ -118,7 +118,7 @@ def refresh_database():
         df = pd.read_sql("select * from test_lifetime", con=hy.con)
 
     scheduler = BlockingScheduler()
-    scheduler.add_job(refresh, "interval", seconds=1000, id="refresh_database")
+    scheduler.add_job(refresh, "interval", seconds=1200, id="refresh_database")
     scheduler.start()
 
 
@@ -481,7 +481,7 @@ def process_info(contents, filename):
         )
         # print(ndf) #该处也正常
 
-        log_stream = validate(ndf, filename)
+        _ = validate(ndf, filename)
 
         return "Successfully, Please update to MYBGI"
     except Exception as e:

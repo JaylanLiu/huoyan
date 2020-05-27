@@ -410,15 +410,21 @@ class HuoYan_monitoring(object):
             for id, date, board_index, hole_index in zip(
                 df["id"], df["date"], df["board_index"], df["hole_index"]
             ):
+                id=str(id).upper()
+                if len(str(id)) != 10:  # filter illegal sample ids
+                    continue
+
                 resn = self.con.execute(
                     f"select * from test_lifetime where id ='{id}'"
                 ).fetchone()
-                if resn == None:  # 非法编号的过滤
-                    continue
-
-                self.con.execute(
-                    f"update test_lifetime set extract='{date}', board_index='{board_index}', hole_index='{hole_index}' where id='{id}'"
-                )
+                if resn == None:  # 编号不存在时也针对提取新建记录                    
+                    self.con.execute(
+                        f"insert into test_lifetime(id,extract,board_index,hole_index) values ('{id}','{date}','{board_index}','{hole_index}')"
+                    )
+                else:
+                    self.con.execute(
+                        f"update test_lifetime set extract='{date}', board_index='{board_index}', hole_index='{hole_index}' where id='{id}'"
+                    )
 
         self.con.execute(
             f"insert into processed_extract_files(extract_file,modify_time) values ('{file}','{self.file_modify_time(file)}')"
@@ -535,9 +541,11 @@ class HuoYan_monitoring(object):
     ):
 
         full_df = self.get_full_df()
+        full_df = full_df.drop_duplicates(subset=['name_x','zjhm'])
 
         jyj_df = full_df[(full_df.organization.isin(jyjs))]
         jyj_df["school"] = jyj_df.unit.map(lambda x: re.split("_", x)[0])
+        jyj_df["school"] = jyj_df["school"].fillna("nan")
 
         # 每天的三个子df
         if day:  # 指定了日期
