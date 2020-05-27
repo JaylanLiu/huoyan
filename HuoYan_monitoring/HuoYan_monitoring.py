@@ -400,8 +400,9 @@ class HuoYan_monitoring(object):
                 raise ValueError("检测表格错误的日期格式", file)
 
             df = pd.read_excel(file, mode="r")
-            df = df.iloc[:, 12:14]
-            df = df.rename(columns={"Unnamed: 12": "hole_index", "样例编号": "id"})
+            df = df.iloc[:, [list(df.columns).index('样例编号')-1,list(df.columns).index('样例编号')]] #位置发生了变化
+            #df = df.rename(columns={"Unnamed: 12": "hole_index", "样例编号": "id"})
+            df.columns=pd.Index(['hole_index','id'])
             df["date"] = date
             df.date = pd.to_datetime(df.date, format="%Y%m%d")
             df["board_index"] = board_index
